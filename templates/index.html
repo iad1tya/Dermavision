@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dermavision</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 40px;
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: #ffffff;
+            color: #2c3e50;
+        }
+        h1, h2, h3 {
+            font-weight: 500;
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+        }
+        #camera-container {
+            margin: 2rem 0;
+        }
+        #video {
+            width: 480px;
+            height: 360px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            background-color: #f8f9fa;
+        }
+        #canvas {
+            display: none;
+        }
+        .capture-section {
+            margin: 1.5rem 0;
+        }
+        .input-section {
+            margin: 2rem 0;
+            display: flex;
+            gap: 1rem;
+        }
+        input {
+            padding: 12px 16px;
+            border: 1px solid #e1e4e8;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.2s ease;
+            width: 200px;
+        }
+        input:focus {
+            outline: none;
+            border-color:rgb(157, 160, 162);
+        }
+        button {
+            padding: 12px 24px;
+            background-color:rgb(150, 159, 165);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: background-color 0.2s ease;
+        }
+        button:hover {
+            background-color:rgb(184, 194, 201);
+        }
+        #image-preview {
+            margin: 2rem 0;
+        }
+        #captured-image {
+            max-width: 480px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        #result {
+            margin: 2rem 0;
+            padding: 16px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            font-size: 1.1rem;
+        }
+        .disclaimer {
+            margin-top: 3rem;
+            padding: 24px;
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+        .project-info {
+            margin-top: 1.5rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .project-info p {
+            margin: 0.5rem 0;
+        }
+    </style>
+    <script>
+        let videoStream;
+
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                videoStream = stream;
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+            } catch (err) {
+                console.error("Error accessing camera:", err);
+                alert("Error accessing camera. Please ensure camera permissions are granted.");
+            }
+        }
+
+        function stopCamera() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        function captureImage() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const imageDataUrl = canvas.toDataURL('image/jpeg');
+            document.getElementById('captured-image').src = imageDataUrl;
+            document.getElementById('image-preview').style.display = 'block';
+        }
+
+        function analyzeSkin() {
+            let name = document.getElementById("name").value;
+            let age = document.getElementById("age").value;
+            let imageDataUrl = document.getElementById('captured-image').src;
+
+            if (!name || !age || !imageDataUrl || imageDataUrl === '') {
+                alert("Please provide all details and capture an image!");
+                return;
+            }
+
+            fetch("/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: name, age: age, image: imageDataUrl })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("result").innerText = `Detected: ${data.skin_condition}`;
+            })
+            .catch(error => console.error("Error:", error));
+        }
+
+        window.onload = startCamera;
+        window.onbeforeunload = stopCamera;
+    </script>
+</head>
+<body>
+    <h1>Skin Analysis</h1>
+    <div class="input-section">
+        <input type="text" id="name" placeholder="Name" required>
+        <input type="number" id="age" placeholder="Age" required>
+    </div>
+
+    <div id="camera-container">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas"></canvas>
+        <div class="capture-section">
+            <button onclick="captureImage()">Capture</button>
+        </div>
+    </div>
+
+    <div id="image-preview" style="display: none;">
+        <h3>Preview</h3>
+        <img id="captured-image">
+    </div>
+
+    <button onclick="analyzeSkin()">Analyze</button>
+    <div id="result"></div>
+
+    <div class="disclaimer">
+        <h3>Academic Project Demo</h3>
+        <p>This is an educational demonstration project and should not be used for medical diagnosis.</p>
+    </div>
+</body>
+</html>
